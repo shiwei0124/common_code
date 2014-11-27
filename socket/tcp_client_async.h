@@ -38,7 +38,7 @@ public:
 	virtual void OnConnect(BOOL bConnected);
 	virtual void OnRecv();
 	virtual int32_t ConnectAsync(const char* szIP, int32_t nPort);
-    virtual int32_t ReConnectAsync();
+    virtual int32_t ReConnectAsync(); 
 	virtual int32_t SendMsgAsync(const char* szBuf, int32_t nBufSize);
 	virtual void Close();
 
