@@ -14,6 +14,7 @@
 #include <windows.h>
 #else
 #include <unistd.h>
+#include <sys/time.h>
 #endif
 
 static void S_Sleep(uint32_t milliseconds)
