@@ -88,7 +88,8 @@ public:
 	virtual int32_t SendBufferAsync() { return 0; };
 	BOOL Bind(const char* szIP, uint32_t nPort) const;	
     
-    virtual void Close();
+    virtual void Close();               //应该需要两个接口，一个是等待buffer中的数据发送完毕然后关闭socket
+                                        //另一个是立刻关闭socket
 protected:
     char m_szIP[32];
 	S_SOCKET m_socket;					//真实用于通信的socket
