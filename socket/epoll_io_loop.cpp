@@ -84,6 +84,7 @@ void CEpollIOLoop::Run()
 					else
 					{
 						pIOStream->OnRecv();
+                        SOCKET_IO_TRACE("socket recv data, sock id: %d.", pIOStream->GetSocketID());
 					}
 				}
 				else

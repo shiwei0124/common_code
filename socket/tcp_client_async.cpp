@@ -9,11 +9,12 @@ CTCPClientAsync::CTCPClientAsync(CIOLoop* pIO) : CBaseIOStream(pIO)
 
 CTCPClientAsync::~CTCPClientAsync(void)
 {
-	Close();
+	ShutDown();
 }
 
 void CTCPClientAsync::_InitSocket()
 {
+    _SetWaitForClose(FALSE);
     m_socket = S_CreateSocket(AF_INET, SOCK_STREAM, 0);
     SetSockType(SOCK_TCP_CLIENT);
     S_SetNoBlock(m_socket, TRUE);
@@ -100,10 +101,15 @@ int32_t CTCPClientAsync::SendBufferAsync()
 	m_sendqueuemutex.Lock();
 	if (m_sendqueue.size() == 0)
 	{
-		//待发送队列中为空，则删除写事件的注册,改成读事件
-		m_pio->Remove_WriteEvent(this);
-		m_sendqueuemutex.Unlock();
-		return nErrorCode;
+        //待发送队列中为空，则删除写事件的注册,改成读事件
+        m_pio->Remove_WriteEvent(this);
+        m_sendqueuemutex.Unlock();
+        if (_GetWaitForCloseStatus() == TRUE)
+        {
+            //待发送内容发送完毕，则关闭链接
+            _Close();
+        }
+        return nErrorCode;
 	}
 	CBufferLoop* pBufferLoop = m_sendqueue.front();
 	m_sendqueuemutex.Unlock();
@@ -152,9 +158,11 @@ int32_t CTCPClientAsync::SendBufferAsync()
 	else
 	{
 		m_sendqueuemutex.Lock();
+        delete pBufferLoop;
 		m_sendqueue.pop();
 		m_sendqueuemutex.Unlock();
 	}
+    delete []szSendBuffer;
 	return nErrorCode;
 }
 
@@ -167,6 +175,26 @@ int32_t CTCPClientAsync::SendBufferAsync()
 int32_t CTCPClientAsync::SendMsgAsync(const char* szBuf, int32_t nBufSize )
 {
 	int32_t nErrorCode = 0;
+    m_sendqueuemutex.Lock();
+    if (m_sendqueue.size() != 0)
+    {
+        if (_GetWaitForCloseStatus() == TRUE)
+        {
+            SOCKET_IO_DEBUG("send tcp data error, socket will be closed.");
+        }
+        else
+        {
+            SOCKET_IO_DEBUG("send tcp data, push data to buffer.");
+            CBufferLoop* pBufferLoop = new CBufferLoop();
+            pBufferLoop->create_buffer(nBufSize);
+            pBufferLoop->append_buffer(szBuf, nBufSize);
+            m_sendqueue.push(pBufferLoop);
+            m_sendqueuemutex.Unlock();
+        }
+        return nErrorCode;
+    }
+    m_sendqueuemutex.Unlock();
+
 	int32_t nRet = S_Send(GetSocket(), (void*)szBuf, nBufSize);
 	if ( nRet < 0)
 	{
@@ -217,23 +245,48 @@ int32_t CTCPClientAsync::SendMsgAsync(const char* szBuf, int32_t nBufSize )
 	return nErrorCode;
 }
 
+/**	@fn	BOOL CTCPClientAsync::_Close()
+ *	@brief 关闭socket
+ *	@return
+ */
+void CTCPClientAsync::_Close()
+{
+    if (GetSocket() != S_INVALID_SOCKET)
+    {
+        if (m_pio)
+        {
+            m_pio->Remove_Handler(this);
+        }
+        S_CloseSocket(GetSocket());
+        SOCKET_IO_WARN("close socket, sock %d, real sock: %d.", GetSocketID(), GetSocket());
+        m_socket = S_INVALID_SOCKET;
+        DoClose(GetSocketID());
+        _ClearSendBuffer();
+    }
+}
+
 /**	@fn	void CTCPClientAsync::Close()
 *	@brief 
 *	@return	
 */
 void CTCPClientAsync::Close()
 {
-	if (GetSocket() != S_INVALID_SOCKET)
-	{
-        if (m_pio)
-        {
-            m_pio->Remove_Handler(this);
-        }
-        S_CloseSocket(GetSocket());
-		SOCKET_IO_WARN("close socket, sock %d, real sock: %d.", GetSocketID(), GetSocket());
-		DoClose(GetSocketID());
-		m_socket = S_INVALID_SOCKET;
-	}
+    _SetWaitForClose(TRUE);
+    m_sendqueuemutex.Lock();
+    if (m_sendqueue.size() == 0) {
+        _Close();
+    }
+    m_sendqueuemutex.Unlock();
+}
+
+/**	@fn	BOOL CTCPClientAsync::ShutDown()
+ *	@brief 立刻关闭socket
+ *	@return
+ */
+void CTCPClientAsync::ShutDown()
+{
+    _SetWaitForClose(TRUE);
+    _Close();
 }
 
 /**	@fn	void CTCPClientAsync::OnConnect(BOOL bConnected)
@@ -315,6 +368,18 @@ BOOL CTCPClientAsync::CheckWrite()
 	return CheckConnect();
 }
 
+void CTCPClientAsync::_ClearSendBuffer()
+{
+    m_sendqueuemutex.Lock();
+    CBufferLoop* pBufferLoop = m_sendqueue.front();
+    while (pBufferLoop)
+    {
+        delete pBufferLoop;
+        m_sendqueue.pop();
+        pBufferLoop = m_sendqueue.front();
+    }
+    m_sendqueuemutex.Unlock();
+}
 
 
 

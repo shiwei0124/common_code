@@ -41,6 +41,7 @@ public:
     virtual int32_t ReConnectAsync();
 	virtual int32_t SendMsgAsync(const char* szBuf, int32_t nBufSize);
 	virtual void Close();
+    virtual void ShutDown();
 
 	virtual int32_t SendBufferAsync();
 	virtual BOOL CheckWrite();
@@ -66,15 +67,20 @@ public:
 	sigslot::signal1<uint32_t> DoClose;
 
 protected:
+    BOOL _GetWaitForCloseStatus() { return m_bWaitForClose; }
+    void _SetWaitForClose(BOOL bStatus) { m_bWaitForClose = bStatus; }
     void _InitSocket();
+    virtual void _Close();
 
+    void _ClearSendBuffer();
 protected:
 	char m_szRemoteIP[32];
 	int32_t m_nRemotePort;
 
+    BOOL m_bWaitForClose;
+    
 	queue<CBufferLoop*> m_sendqueue;		//待发送队列，只有非阻塞的TCP socket才会用到
 	CBaseMutex m_sendqueuemutex;
-
 };
 
 #endif

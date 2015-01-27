@@ -88,8 +88,10 @@ public:
 	virtual int32_t SendBufferAsync() { return 0; };
 	BOOL Bind(const char* szIP, uint32_t nPort) const;	
     
-    virtual void Close();               //应该需要两个接口，一个是等待buffer中的数据发送完毕然后关闭socket
-                                        //另一个是立刻关闭socket
+    //对于非阻塞得socket来说，Close与ShutDown处理机制不一样
+    //Close只是告诉要准备关闭,需要等待还在队列中得数据发送出去在关闭,shutdown则是立刻关闭
+    virtual void Close();
+    virtual void ShutDown();
 protected:
     char m_szIP[32];
 	S_SOCKET m_socket;					//真实用于通信的socket

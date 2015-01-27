@@ -2,7 +2,7 @@
 #define _SOCKET_IO_DEFINE_H
 //
 #include "stdio.h"
-
+#include "../slog/slog_api.h"
 #define SOCKET_IO_RESULT_OK                 0x0000  //
 #define SOCKET_IO_TCP_RECV_FAILED			0x0001	//tcp recv failed
 #define SOCKET_IO_TCP_SEND_FAILED			0x0002  //tcp send failed
@@ -15,45 +15,38 @@
 #define SOCKET_IO_SSL_SEND_FAILED           0x0022  //ssl send failed
 #define SOCKET_IO_SSL_CONNECT_FAILED        0x0023  //ssl connect failed
 
-
-/*
-HLOG_HANLDE_MODULE(SOCKET_IO)
-*/
+#define LOG_MODULE_SOCKET   "SOCKET"
+extern CSLog g_socketlog;
 
 #define SOCKET_IO_FATAL(fmt, ...) \
-    {\
-        printf(fmt, ##__VA_ARGS__);\
-        printf("\n");\
-    }
+{\
+    g_socketlog.Fatal(fmt, ##__VA_ARGS__);\
+}
+
 
 #define SOCKET_IO_ERROR(fmt, ...) \
-    {\
-        printf(fmt, ##__VA_ARGS__);\
-        printf("\n");\
-    }
+{\
+    g_socketlog.Error(fmt, ##__VA_ARGS__);\
+}
 
-#define SOCKET_IO_WARN(fmt, ...) \
-    {\
-        printf(fmt, ##__VA_ARGS__);\
-        printf("\n");\
-    }
+#define SOCKET_IO_WARN(fmt, ...)  \
+{\
+    g_socketlog.Warn(fmt, ##__VA_ARGS__);\
+}
 
-#define SOCKET_IO_INFO(fmt, ...) \
-    {\
-        printf(fmt, ##__VA_ARGS__);\
-        printf("\n");\
-    }
+#define SOCKET_IO_INFO(fmt, ...)  \
+{\
+    g_socketlog.Info(fmt, ##__VA_ARGS__);\
+}
 
-#define SOCKET_IO_DEBUG(fmt, ...) \
-    {\
-        printf(fmt, ##__VA_ARGS__);\
-        printf("\n");\
-    }
+#define SOCKET_IO_DEBUG(fmt, ...)  \
+{\
+    g_socketlog.Debug(fmt, ##__VA_ARGS__);\
+}
 
-#define SOCKET_IO_TRACE(fmt, ...) \
-    {\
-        printf(fmt, ##__VA_ARGS__);\
-        printf("\n");\
-    }
+#define SOCKET_IO_TRACE(fmt, ...)  \
+{\
+    g_socketlog.Trace(fmt, ##__VA_ARGS__);\
+}
 
 #endif

@@ -19,6 +19,8 @@ public:
 	uint32_t GetBodyLength() const { return m_nBodyLength; }
     uint32_t GetTailLength() const { return m_nTailLength; }
     uint32_t GetDataLength() const { return m_nHeadLength + m_nBodyLength + m_nTailLength; }
+    
+    //记录当前buffer中的数据长度
     uint32_t GetDataBufferLength() { return m_databuffer.GetWriteOffset(); }
     
     const char* Header() const { return m_databuffer.GetBuffer(); }

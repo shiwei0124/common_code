@@ -17,13 +17,17 @@ CSSLClientAsync::CSSLClientAsync(CIOLoop* pIO) : CTCPClientAsync(pIO)
 
 CSSLClientAsync::~CSSLClientAsync()
 {
-    Close();
+    ShutDown();
     UnInitSSL();
 }
 
 BOOL CSSLClientAsync::InitSSL(const char* cert_file, const char* key_file, const char* key_password)
 {
     BOOL bRet = FALSE;
+    m_strCertFile = cert_file;
+    m_strKeyFile = key_file;
+    m_strKeyPassword = key_password;
+    
     m_ctx = SSL_CTX_new(SSLv23_client_method());
     if (m_ctx)
     {
@@ -61,18 +65,13 @@ BOOL CSSLClientAsync::InitSSL(const char* cert_file, const char* key_file, const
         }
         
         m_ssl = SSL_new(m_ctx);
-        if (m_ssl)
+        if (!m_ssl)
         {
-            bRet = TRUE;
+            SOCKET_IO_ERROR("init ssl, create SSL object failed.");
         }
         else
         {
-            if (m_ctx)
-            {
-                SSL_CTX_free(m_ctx);
-                m_ctx = NULL;
-            }
-            SOCKET_IO_ERROR("init ssl: create SSL object failed.");
+            bRet = TRUE;
         }
     }
     else
@@ -170,14 +169,14 @@ void CSSLClientAsync::OnRecv()
 
 int32_t CSSLClientAsync::SSLConnect()
 {
+    int32_t nErrorCode = SOCKET_IO_RESULT_OK;
+    
     //ssl_handshake采用blocking方式，且在handshake过程中不能由io_loop进行读取数据，否则会有问题，
     //因为ssl_handshake过程也会触发io_loop的可读。
     //看官方文档，ssl_connect支持非阻塞，只是需要采用底层的bio进行操作，此处暂时使用blocking简单化处理
     //但是可能会有一个问题，服务端如果不对此处理，可能会一直卡在SSL_connect这个接口
     m_pio->Remove_Handler(this);
     S_SetNoBlock(GetSocket(), FALSE);
-    
-    int32_t nErrorCode = SOCKET_IO_RESULT_OK;
     SSL_set_mode(GetSSL(), SSL_MODE_AUTO_RETRY);
     if (SSL_set_fd(GetSSL(), GetSocket()) != 1)
     {
@@ -185,7 +184,6 @@ int32_t CSSLClientAsync::SSLConnect()
         SOCKET_IO_ERROR("ssl set fd failed");
         return nErrorCode;
     }
-    
     int32_t nRet = SSL_connect(GetSSL());
     if (nRet != 1)
     {
@@ -204,8 +202,39 @@ int32_t CSSLClientAsync::SSLConnect()
     return nErrorCode;
 }
 
+int32_t CSSLClientAsync::ReConnectAsync()
+{
+    int32_t nErrorCode = 0;
+    if (S_INVALID_SOCKET == GetSocket())
+    {
+        _InitSocket();
+        nErrorCode = ConnectAsync(GetRemoteIP(), GetRemotePort());
+    }
+    return nErrorCode;
+}
+
 int32_t CSSLClientAsync::SendMsgAsync(const char *szBuf, int32_t nBufSize)
 {
+    m_sendqueuemutex.Lock();
+    if (m_sendqueue.size() != 0)
+    {
+        if (_GetWaitForCloseStatus() == TRUE)
+        {
+            SOCKET_IO_DEBUG("send tcp data error, socket will be closed.");
+        }
+        else
+        {
+            SOCKET_IO_DEBUG("send tcp data, push data to buffer.");
+            CBufferLoop* pBufferLoop = new CBufferLoop();
+            pBufferLoop->create_buffer(nBufSize);
+            pBufferLoop->append_buffer(szBuf, nBufSize);
+            m_sendqueue.push(pBufferLoop);
+            m_sendqueuemutex.Unlock();
+        }
+        return SOCKET_IO_RESULT_OK;
+    }
+    m_sendqueuemutex.Unlock();
+    
     int32_t nRet = SSL_write(GetSSL(), (void*)szBuf, nBufSize);
     if ( nRet < 0)
     {
@@ -255,6 +284,10 @@ int32_t CSSLClientAsync::SendMsgAsync(const char *szBuf, int32_t nBufSize)
         m_pio->Add_WriteEvent(this);
         SOCKET_IO_DEBUG("send ssl data, send size: %d, less than %d.", nRet, nBufSize);
     }
+    else if (nRet == nBufSize)
+    {
+        SOCKET_IO_DEBUG("send ssl data successed.");
+    }
     return SOCKET_IO_RESULT_OK;
 }
 
@@ -267,6 +300,11 @@ int32_t CSSLClientAsync::SendBufferAsync()
         //待发送队列中为空，则删除写事件的注册,改成读事件
         m_pio->Remove_WriteEvent(this);
         m_sendqueuemutex.Unlock();
+        if (_GetWaitForCloseStatus() == TRUE)
+        {
+            //待发送内容发送完毕，则关闭链接
+            _Close();
+        }
         return nErrorCode;
     }
     CBufferLoop* pBufferLoop = m_sendqueue.front();
@@ -318,14 +356,33 @@ int32_t CSSLClientAsync::SendBufferAsync()
     }
     else
     {
+        SOCKET_IO_DEBUG("send ssl data from buffer successed.", nRet, nRealSize);
         m_sendqueuemutex.Lock();
+        delete pBufferLoop;
         m_sendqueue.pop();
         m_sendqueuemutex.Unlock();
     }
+    delete []szSendBuffer;
     return nErrorCode;
 }
 
 void CSSLClientAsync::Close()
+{
+    _SetWaitForClose(TRUE);
+    m_sendqueuemutex.Lock();
+    if (m_sendqueue.size() == 0) {
+        _Close();
+    }
+    m_sendqueuemutex.Unlock();
+}
+
+void CSSLClientAsync::ShutDown()
+{
+    _SetWaitForClose(TRUE);
+    _Close();
+}
+
+void CSSLClientAsync::_Close()
 {
     if (m_ssl)
     {
@@ -339,11 +396,9 @@ void CSSLClientAsync::Close()
         }
         
         S_CloseSocket(GetSocket());
-        
         SOCKET_IO_WARN("close ssl socket, sock %d, real sock: %d.", GetSocketID(), GetSocket());
+        m_socket = S_INVALID_SOCKET;
         DoClose(GetSocketID());
+        _ClearSendBuffer();
     }
-    m_socket = S_INVALID_SOCKET;
-
 }
-

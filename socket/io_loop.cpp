@@ -191,6 +191,7 @@ void CIOLoop::Run()
 			//TODO
 			//Error
 			SOCKET_IO_ERROR("socket select error");
+            break;
 		}
 	}
 }

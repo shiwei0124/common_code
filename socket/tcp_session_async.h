@@ -42,6 +42,7 @@ public:
 
 	virtual int32_t SendMsgAsync(const char* szBuf, int32_t nBufSize);
 	virtual void Close();
+    virtual void ShutDown();
 
 	virtual int32_t SendBufferAsync();
 	virtual BOOL CheckWrite();
@@ -55,6 +56,14 @@ public:
     /*uint32_t nsockid*/
 	sigslot::signal1<uint32_t> DoClose;
 protected:
+    BOOL _GetWaitForCloseStatus() { return m_bWaitForClose; }
+    void _SetWaitForClose(BOOL bStatus) { m_bWaitForClose = bStatus; }
+
+    virtual void _Close();
+    void _ClearSendBuffer();
+protected:
+    BOOL m_bWaitForClose;
+    
 	queue<CBufferLoop*> m_sendqueue;		//待发送队列，只有非阻塞的TCP socket才会用到
 	CBaseMutex m_sendqueuemutex;
 

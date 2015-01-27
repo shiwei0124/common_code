@@ -10,7 +10,7 @@
 #define _BASE_SOCKET_HPP
 
 #if (defined(_WIN32) || defined(_WIN64))
-#include <Winsock2.h>
+
 #else
 #include <sys/socket.h>
 #include <sys/fcntl.h>
@@ -581,6 +581,7 @@ static int32_t S_GetHostByName(const char* szName, char* szIP)
     return 0;
 }
     
+    
 /**
  *  S_ntohl
  *
@@ -592,7 +593,7 @@ static uint32_t S_ntohl(uint32_t netlong)
 {
     return ntohl(netlong);
 }
-    
+
 /**
  *  S_htonl
  *
@@ -628,7 +629,7 @@ static uint16_t S_htons(uint16_t hostshort)
 {
     return htons(hostshort);
 }
-
+    
 /**
  *  S_ntohll
  *
@@ -653,7 +654,6 @@ static uint64_t S_htonll(uint64_t val)
     return (((uint64_t )htonl((int32_t)((val << 32) >> 32))) << 32) | (uint32_t)htonl((int32_t)(val >> 32));
 }
     
-
 #ifdef __cplusplus
 }
 #endif

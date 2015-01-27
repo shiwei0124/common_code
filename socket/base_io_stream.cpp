@@ -1,6 +1,9 @@
 #include "base_io_stream.h"
 #include "socket_io_define.h"
 #include "io_loop.h"
+
+CSLog g_socketlog = CSLog(LOG_MODULE_SOCKET);
+
 CBaseIOStream::CBaseIOStream(CIOLoop* pio)
 {
 	m_socket = S_INVALID_SOCKET;
@@ -44,4 +47,9 @@ void CBaseIOStream::Close()
         S_CloseSocket(m_socket);
         m_socket = S_INVALID_SOCKET;
     }
+}
+
+void CBaseIOStream::ShutDown()
+{
+    Close();
 }
