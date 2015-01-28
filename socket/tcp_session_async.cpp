@@ -295,12 +295,11 @@ BOOL CTCPSessionAsync::CheckWrite()
 void CTCPSessionAsync::_ClearSendBuffer()
 {
     m_sendqueuemutex.Lock();
-    CBufferLoop* pBufferLoop = m_sendqueue.front();
-    while (pBufferLoop)
+    while (m_sendqueue.size() > 0)
     {
+        CBufferLoop* pBufferLoop = m_sendqueue.front();
         delete pBufferLoop;
         m_sendqueue.pop();
-        pBufferLoop = m_sendqueue.front();
     }
     m_sendqueuemutex.Unlock();
 }
