@@ -131,21 +131,15 @@ int32_t CTCPClientAsync::SendBufferAsync()
 		}
 		else
 		{
-            m_sendqueuemutex.Lock();
-            delete pBufferLoop;
-            m_sendqueue.pop();
-            m_sendqueuemutex.Unlock();
+            _ClearSendBuffer();
 			SOCKET_IO_ERROR("send tcp data error, errno: %d.", nError);
 			DoException(GetSocketID(), SOCKET_IO_TCP_SEND_FAILED);
 		}
 	}
 	else if (nRet == 0)
 	{
+        _ClearSendBuffer();
 		SOCKET_IO_WARN("send tcp data error, peer closed.");
-        m_sendqueuemutex.Lock();
-        delete pBufferLoop;
-        m_sendqueue.pop();
-        m_sendqueuemutex.Unlock();
 		DoException(GetSocketID(), SOCKET_IO_TCP_SEND_FAILED);
 	}
 	else if (nRet != nRealSize)

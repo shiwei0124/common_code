@@ -322,11 +322,8 @@ int32_t CSSLClientAsync::SendBufferAsync()
         }
         else
         {
+            _ClearSendBuffer();
             SOCKET_IO_ERROR("send ssl data error, errno: %d.", nError);
-            m_sendqueuemutex.Lock();
-            delete pBufferLoop;
-            m_sendqueue.pop();
-            m_sendqueuemutex.Unlock();
             DoException(GetSocketID(), SOCKET_IO_SSL_SEND_FAILED);
         }
     }
@@ -341,10 +338,7 @@ int32_t CSSLClientAsync::SendBufferAsync()
         {
             SOCKET_IO_ERROR("send ssl data error, errno: %d.", nError);
         }
-        m_sendqueuemutex.Lock();
-        delete pBufferLoop;
-        m_sendqueue.pop();
-        m_sendqueuemutex.Unlock();
+        _ClearSendBuffer();
         DoException(GetSocketID(), SOCKET_IO_SSL_SEND_FAILED);
     }
     else if (nRet != nRealSize)
