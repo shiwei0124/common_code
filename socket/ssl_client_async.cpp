@@ -220,11 +220,11 @@ int32_t CSSLClientAsync::SendMsgAsync(const char *szBuf, int32_t nBufSize)
     {
         if (_GetWaitForCloseStatus() == TRUE)
         {
-            SOCKET_IO_DEBUG("send tcp data error, socket will be closed.");
+            SOCKET_IO_DEBUG("send ssl data error, socket will be closed.");
         }
         else
         {
-            SOCKET_IO_DEBUG("send tcp data, push data to buffer.");
+            SOCKET_IO_DEBUG("send ssl data, push data to buffer.");
             CBufferLoop* pBufferLoop = new CBufferLoop();
             pBufferLoop->create_buffer(nBufSize);
             pBufferLoop->append_buffer(szBuf, nBufSize);
@@ -318,11 +318,15 @@ int32_t CSSLClientAsync::SendBufferAsync()
         int32_t nError = SSL_get_error(GetSSL(), nRet);
         if (SSL_ERROR_WANT_WRITE == nError || SSL_ERROR_WANT_READ == nError)
         {
-            SOCKET_IO_DEBUG("send ssl data, buffer is blocking.")
+            SOCKET_IO_DEBUG("send ssl data, buffer is blocking.");
         }
         else
         {
             SOCKET_IO_ERROR("send ssl data error, errno: %d.", nError);
+            m_sendqueuemutex.Lock();
+            delete pBufferLoop;
+            m_sendqueue.pop();
+            m_sendqueuemutex.Unlock();
             DoException(GetSocketID(), SOCKET_IO_SSL_SEND_FAILED);
         }
     }
@@ -337,6 +341,10 @@ int32_t CSSLClientAsync::SendBufferAsync()
         {
             SOCKET_IO_ERROR("send ssl data error, errno: %d.", nError);
         }
+        m_sendqueuemutex.Lock();
+        delete pBufferLoop;
+        m_sendqueue.pop();
+        m_sendqueuemutex.Unlock();
         DoException(GetSocketID(), SOCKET_IO_SSL_SEND_FAILED);
     }
     else if (nRet != nRealSize)
