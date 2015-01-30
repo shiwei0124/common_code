@@ -23,6 +23,8 @@ public:
     SSL_CTX* GetSSLCTX() const { return m_ctx; }
     SSL* GetSSL() const { return m_ssl; }
     
+    void SetSSLConnectStatus(BOOL bStatus) { m_bSSLConnectStatus = bStatus; }
+    BOOL GetSSLConnectStatus() { return m_bSSLConnectStatus; }
     string GetCertFile() { return m_strCertFile; }
     string GetKeyFile() { return m_strKeyFile; }
     string GetKeyPassword() { return m_strKeyPassword; }
@@ -47,6 +49,8 @@ protected:
     virtual void _Close();
     
 protected:
+    BOOL m_bSSLConnectStatus;
+    
     string m_strCertFile;
     string m_strKeyFile;
     string m_strKeyPassword;

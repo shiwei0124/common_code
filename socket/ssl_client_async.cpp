@@ -13,6 +13,7 @@ CSSLClientAsync::CSSLClientAsync(CIOLoop* pIO) : CTCPClientAsync(pIO)
 {
     m_ctx = NULL;
     m_ssl = NULL;
+    m_bSSLConnectStatus = FALSE;
 }
 
 CSSLClientAsync::~CSSLClientAsync()
@@ -195,6 +196,7 @@ int32_t CSSLClientAsync::SSLConnect()
     else
     {
         SOCKET_IO_INFO("ssl connect successed, remote ip: %s, port: %d.", GetRemoteIP(), GetRemotePort());
+        SetSSLConnectStatus(TRUE);
         //ssl_handshake成功后在设置成
         S_SetNoBlock(GetSocket(), TRUE);
         m_pio->Add_Handler(this);
@@ -396,7 +398,7 @@ void CSSLClientAsync::_Close()
         {
             m_pio->Remove_Handler(this);
         }
-        
+        SetSSLConnectStatus(FALSE);
         S_CloseSocket(GetSocket());
         SOCKET_IO_WARN("close ssl socket, sock %d, real sock: %d.", GetSocketID(), GetSocket());
         m_socket = S_INVALID_SOCKET;
