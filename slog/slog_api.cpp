@@ -104,7 +104,7 @@ void CSLog::Trace(const char *format, ...)
     va_list args;
     va_start(args, format);
     char szBuffer[MAX_LOG_LENGTH];
-    vsprintf(szBuffer, sizeof(szBuffer), format, args);
+    vsnprintf(szBuffer, sizeof(szBuffer), format, args);
     va_end(args);
     m_log->Trace(szBuffer);
 }
@@ -114,7 +114,7 @@ void CSLog::Debug(const char *format, ...)
     va_list args;
     va_start(args, format);
     char szBuffer[MAX_LOG_LENGTH];
-    vsprintf(szBuffer, sizeof(szBuffer) ,sizeof(szBuffer), format, args);
+    vsnprintf(szBuffer, sizeof(szBuffer) , format, args);
     va_end(args);
     m_log->Debug(szBuffer);
 }
@@ -124,7 +124,7 @@ void CSLog::Info(const char *format, ...)
     va_list args;
     va_start(args, format);
     char szBuffer[MAX_LOG_LENGTH];
-    vsprintf(szBuffer, sizeof(szBuffer), format, args);
+    vsnprintf(szBuffer, sizeof(szBuffer), format, args);
     va_end(args);
     m_log->Info(szBuffer);
 }
@@ -134,7 +134,7 @@ void CSLog::Warn(const char *format, ...)
     va_list args;
     va_start(args, format);
     char szBuffer[MAX_LOG_LENGTH];
-    vsprintf(szBuffer, sizeof(szBuffer), format, args);
+    vsnprintf(szBuffer, sizeof(szBuffer), format, args);
     va_end(args);
     m_log->Warn(szBuffer);
 }
@@ -144,7 +144,7 @@ void CSLog::Error(const char *format, ...)
     va_list args;
     va_start(args, format);
     char szBuffer[MAX_LOG_LENGTH];
-    vsprintf(szBuffer, sizeof(szBuffer), format, args);
+    vsnprintf(szBuffer, sizeof(szBuffer), format, args);
     va_end(args);
     m_log->Error(szBuffer);
 }
@@ -154,7 +154,7 @@ void CSLog::Fatal(const char *format, ...)
     va_list args;
     va_start(args, format);
     char szBuffer[MAX_LOG_LENGTH];
-    vsprintf(szBuffer, sizeof(szBuffer), format, args);
+    vsnprintf(szBuffer, sizeof(szBuffer), format, args);
     va_end(args);
     m_log->Fatal(szBuffer);
 }
