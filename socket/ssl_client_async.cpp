@@ -19,7 +19,6 @@ CSSLClientAsync::CSSLClientAsync(CIOLoop* pIO) : CTCPClientAsync(pIO)
 CSSLClientAsync::~CSSLClientAsync()
 {
     ShutDown();
-    UnInitSSL();
 }
 
 BOOL CSSLClientAsync::InitSSL(const char* cert_file, const char* key_file, const char* key_password)
@@ -65,14 +64,17 @@ BOOL CSSLClientAsync::InitSSL(const char* cert_file, const char* key_file, const
             return bRet;
         }
         
-        m_ssl = SSL_new(m_ctx);
-        if (!m_ssl)
+        if (NULL == m_ssl)
         {
-            SOCKET_IO_ERROR("init ssl, create SSL object failed.");
-        }
-        else
-        {
-            bRet = TRUE;
+            m_ssl = SSL_new(m_ctx);
+            if (NULL == m_ssl)
+            {
+                SOCKET_IO_ERROR("init ssl, create SSL object failed.");
+            }
+            else
+            {
+                bRet = TRUE;
+            }
         }
     }
     else
@@ -86,6 +88,7 @@ void CSSLClientAsync::UnInitSSL()
 {
     if (m_ssl)
     {
+        SSL_shutdown(m_ssl);
         SSL_free(m_ssl);
         m_ssl = NULL;
     }
@@ -210,6 +213,7 @@ int32_t CSSLClientAsync::ReConnectAsync()
     if (S_INVALID_SOCKET == GetSocket())
     {
         _InitSocket();
+        InitSSL(GetCertFile().c_str(), GetKeyFile().c_str(), GetKeyPassword().c_str());
         nErrorCode = ConnectAsync(GetRemoteIP(), GetRemotePort());
     }
     return nErrorCode;
@@ -226,13 +230,19 @@ int32_t CSSLClientAsync::SendMsgAsync(const char *szBuf, int32_t nBufSize)
         }
         else
         {
-            SOCKET_IO_DEBUG("send ssl data, push data to buffer.");
-            CBufferLoop* pBufferLoop = new CBufferLoop();
-            pBufferLoop->create_buffer(nBufSize);
-            pBufferLoop->append_buffer(szBuf, nBufSize);
-            m_sendqueue.push(pBufferLoop);
-            m_sendqueuemutex.Unlock();
+            if (m_sendqueue.size() >= MAX_SEND_QUEUE_SIZE) {
+                SOCKET_IO_WARN("send ssl data error, buffer is overload.");
+            }
+            else
+            {
+                SOCKET_IO_DEBUG("send ssl data, push data to buffer.");
+                CBufferLoop* pBufferLoop = new CBufferLoop();
+                pBufferLoop->create_buffer(nBufSize);
+                pBufferLoop->append_buffer(szBuf, nBufSize);
+                m_sendqueue.push(pBufferLoop);
+            }
         }
+        m_sendqueuemutex.Unlock();
         return SOCKET_IO_RESULT_OK;
     }
     m_sendqueuemutex.Unlock();
@@ -390,7 +400,7 @@ void CSSLClientAsync::_Close()
 {
     if (m_ssl)
     {
-        SSL_shutdown(m_ssl);
+        UnInitSSL();
     }
     if (GetSocket() != S_INVALID_SOCKET)
     {
