@@ -125,6 +125,10 @@ void CEpollIOLoop::Run()
 				}
 			}//EPOLLERR
 		}
+        if (events) {
+            delete []events;
+            events = NULL;
+        }
 	}
 }
 

@@ -112,6 +112,13 @@ void CSSLClientAsync::OnConnect(BOOL bConnected)
         SOCKET_IO_INFO("socket connect successed, remote ip: %s, port: %d.", GetRemoteIP(),
                        GetRemotePort());
         DoConnect(GetSocketID());
+        SSL_set_mode(GetSSL(), SSL_MODE_AUTO_RETRY);
+        if (SSL_set_fd(GetSSL(), GetSocket()) != 1)
+        {
+            SOCKET_IO_ERROR("ssl set fd failed");
+            DoException(GetSocketID(), SOCKET_IO_SSL_CONNECT_FAILED);
+            return;
+        }
         SSLConnect();
     }
     else
@@ -178,13 +185,6 @@ int32_t CSSLClientAsync::SSLConnect()
     
     //阻塞的ssl_connect可能会有一个问题，服务端如果不对此处理，可能会一直卡在SSL_connect这个接口
     //此处采用非阻塞的ssl_connect
-    SSL_set_mode(GetSSL(), SSL_MODE_AUTO_RETRY);
-    if (SSL_set_fd(GetSSL(), GetSocket()) != 1)
-    {
-        SOCKET_IO_ERROR("ssl set fd failed");
-        DoException(GetSocketID(), SOCKET_IO_SSL_CONNECT_FAILED);
-        return nErrorCode;
-    }
     
     int32_t nRet = SSL_connect(GetSSL());
     if (nRet == 1)
