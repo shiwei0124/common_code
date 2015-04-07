@@ -90,7 +90,22 @@ void CSSLClientAsync::UnInitSSL()
 {
     if (m_ssl)
     {
-        SSL_shutdown(m_ssl);
+        int32_t nRet = SSL_shutdown(m_ssl);
+        if (nRet == 0)
+        {
+            int32_t nErrorCode = SSL_get_error(GetSSL(), nRet);
+            SOCKET_IO_WARN("ssl shutdown not finished, errno: %d.", nErrorCode);
+
+        }
+        else if (nRet == 1)
+        {
+            SOCKET_IO_DEBUG("ssl shutdown successed.");
+        }
+        else if (nRet < 0)
+        {
+            int32_t nErrorCode = SSL_get_error(GetSSL(), nRet);
+            SOCKET_IO_ERROR("ssl shutdown failed, errno: %d.", nErrorCode);
+        }
         SSL_free(m_ssl);
         m_ssl = NULL;
     }
@@ -252,13 +267,14 @@ int32_t CSSLClientAsync::SendMsgAsync(const char *szBuf, int32_t nBufSize)
                 pBufferLoop->create_buffer(nBufSize);
                 pBufferLoop->append_buffer(szBuf, nBufSize);
                 m_sendqueue.push(pBufferLoop);
+                //m_pio->Add_WriteEvent(this);
             }
         }
         m_sendqueuemutex.Unlock();
         return SOCKET_IO_RESULT_OK;
     }
     m_sendqueuemutex.Unlock();
-    
+
     int32_t nRet = SSL_write(GetSSL(), (void*)szBuf, nBufSize);
     if ( nRet < 0)
     {
@@ -273,7 +289,7 @@ int32_t CSSLClientAsync::SendMsgAsync(const char *szBuf, int32_t nBufSize)
             m_sendqueuemutex.Unlock();
             //有数据放入待发送队列，则注册为写事件
             m_pio->Add_WriteEvent(this);
-            SOCKET_IO_DEBUG("send ssl data, buffer is blocking.");
+            SOCKET_IO_DEBUG("send ssl data, buffer is blocking, errno: %d.", nError);
         }
         else
         {
@@ -321,6 +337,7 @@ int32_t CSSLClientAsync::SendBufferAsync()
     m_sendqueuemutex.Lock();
     if (m_sendqueue.size() == 0)
     {
+        SOCKET_IO_DEBUG("ssl send queue is empty.");
         //待发送队列中为空，则删除写事件的注册,改成读事件
         m_pio->Remove_WriteEvent(this);
         m_sendqueuemutex.Unlock();
@@ -342,7 +359,7 @@ int32_t CSSLClientAsync::SendBufferAsync()
         int32_t nError = SSL_get_error(GetSSL(), nRet);
         if (SSL_ERROR_WANT_WRITE == nError || SSL_ERROR_WANT_READ == nError)
         {
-            SOCKET_IO_DEBUG("send ssl data, buffer is blocking.");
+            SOCKET_IO_DEBUG("send ssl data, buffer is blocking, errno: %d.", nError);
         }
         else
         {
