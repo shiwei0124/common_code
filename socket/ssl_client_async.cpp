@@ -399,7 +399,7 @@ int32_t CSSLClientAsync::SendBufferAsync()
     }
     else
     {
-        SOCKET_IO_DEBUG("send ssl data from buffer successed.");
+        SOCKET_IO_INFO("send ssl data from buffer successed.");
         m_sendqueuemutex.Lock();
         delete pBufferLoop;
         pBufferLoop = NULL;
